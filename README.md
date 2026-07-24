@@ -1,6 +1,6 @@
 # tauceti in Docker
 
-Run the tauceti loop in a container, using **both Codex and Claude** (`--agent auto`), on your
+Run the tauceti loop in a container, using **both Codex and Claude**, on your
 own subscriptions — no API keys. The container _is_ the sandbox, so it runs in host mode (no
 bubble). Agent creds are stored in **files** on Linux, so the loop refreshes its tokens in place
 and keeps running unattended; the creds persist across restarts via named volumes.
@@ -13,9 +13,7 @@ volume) and RAM (Lean builds want ≥8 G).
 From this repo's directory:
 
 ```bash
-docker compose build            # builds for the host architecture (arm64 or amd64)
-# cross-build if targeting a different arch:
-#   docker buildx build --platform linux/amd64 -t tauceti-worker .
+docker compose build
 ```
 
 ## 2. Authenticate (one-time; creds persist in the volumes)

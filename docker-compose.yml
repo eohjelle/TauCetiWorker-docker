@@ -5,8 +5,7 @@ services:
     build: .
     image: tauceti-worker
     restart: unless-stopped
-    # Both agents, paced against each subscription's quota; --stream renders live to `docker logs` AND tees each round to logs/.
-    command: ["./tauceti", "work", "--loop", "--stream"]
+    command: ["./tauceti", "work", "--loop"]
     environment:
       - IS_SANDBOX=1
     volumes:
