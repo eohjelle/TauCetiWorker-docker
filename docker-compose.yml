@@ -1,0 +1,40 @@
+# Run: docker compose up -d --build   |   watch: docker compose logs -f
+# See README.md for one-time authentication (Claude + Codex + gh) before the first run.
+services:
+  tauceti:
+    build: .
+    image: tauceti-worker
+    restart: unless-stopped
+    # Both agents, paced against each subscription's quota; --stream renders live to `docker logs` AND tees each round to logs/.
+    command: ["./tauceti", "work", "--loop", "--stream"]
+    environment:
+      - IS_SANDBOX=1
+    volumes:
+      # Subscription creds persist in named volumes. Claude refresh is owned by the service below.
+      - claude:/root/.claude          # Claude: .credentials.json + full session transcripts (projects/)
+      - codex:/root/.codex            # Codex:  auth.json
+      - gh:/root/.config/gh           # GitHub auth
+      # Build state + logs — named volumes for fast native-FS builds and durability.
+      - checkouts:/opt/tauceti/checkouts   # persistent checkout → incremental Lean builds
+      - state:/opt/tauceti/state
+      - logs:/opt/tauceti/logs
+    # Lean/Mathlib builds are memory-hungry. Uncomment and size to your host (values are a starting point):
+    # mem_limit: 12g
+    # cpus: 6
+
+  # Single writer for the renewable Claude login in the shared volume. TauCeti's
+  # isolated workers mirror only its access token, avoiding refresh-token races.
+  claude-refresh:
+    image: tauceti-worker
+    restart: unless-stopped
+    command: ["/usr/local/bin/claude-refresh-loop"]
+    volumes:
+      - claude:/root/.claude
+
+volumes:
+  claude:
+  codex:
+  gh:
+  checkouts:
+  state:
+  logs:
