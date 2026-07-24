@@ -25,8 +25,8 @@ ENV PATH="/root/.elan/bin:/root/.local/bin:${PATH}" \
 
 # The worker (your fork). The ADD fetches main's current commit so that when main advances this layer's
 # cache busts and the clone re-runs — plain `docker compose build` always gets the latest fork commit.
-ADD https://api.github.com/repos/kim-em/TauCetiWorker/commits/main /tmp/worker-head.json
-RUN git clone https://github.com/kim-em/TauCetiWorker.git /opt/tauceti
+ADD https://api.github.com/repos/eohjelle/TauCetiWorker/commits/main /tmp/worker-head.json
+RUN git clone https://github.com/eohjelle/TauCetiWorker.git /opt/tauceti
 
 # Refresh the full Claude OAuth login before its access token expires.
 COPY claude-refresh-loop /usr/local/bin/claude-refresh-loop
