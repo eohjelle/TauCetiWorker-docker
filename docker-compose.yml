@@ -5,7 +5,7 @@ services:
     build: .
     image: tauceti-worker
     restart: unless-stopped
-    command: ["./tauceti", "work", "--loop"]
+    command: ["./tauceti", "work", "--loop", "--stream"]
     environment:
       - IS_SANDBOX=1
     volumes:
