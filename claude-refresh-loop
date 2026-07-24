@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+config_dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+credentials="$config_dir/.credentials.json"
+poll_seconds="${TAUCETI_CLAUDE_REFRESH_POLL_SECONDS:-60}"
+refresh_skew_ms="${TAUCETI_CLAUDE_REFRESH_SKEW_MS:-600000}"
+
+mkdir -p "$config_dir"
+echo "claude-refresh: monitoring $credentials"
+
+while true; do
+  if [[ ! -s "$credentials" ]]; then
+    echo "claude-refresh: waiting for $credentials"
+    sleep "$poll_seconds"
+    continue
+  fi
+
+  now_ms=$(( $(date +%s) * 1000 ))
+  expires_at="$(jq -r '(.claudeAiOauth.expiresAt // 0) | tonumber? // 0 | floor' "$credentials")"
+  if (( expires_at > 0 && expires_at < 100000000000 )); then
+    expires_at=$(( expires_at * 1000 ))
+  fi
+
+  if (( expires_at <= now_ms + refresh_skew_ms )); then
+    if ! refresh_token="$(
+      jq -er '.claudeAiOauth.refreshToken | select(type == "string" and length > 0)' "$credentials"
+    )"; then
+      echo >&2 "claude-refresh: no renewable Claude credential; run 'claude auth login'"
+      sleep "$poll_seconds"
+      continue
+    fi
+
+    if ! scopes="$(
+      jq -er '
+        .claudeAiOauth.scopes
+        | if type == "array" then join(" ")
+          elif type == "string" then .
+          else empty
+          end
+        | select(length > 0)
+      ' "$credentials"
+    )"; then
+      echo >&2 "claude-refresh: credential has no OAuth scopes; run 'claude auth login'"
+      unset refresh_token
+      sleep "$poll_seconds"
+      continue
+    fi
+
+    refresh_dir="$(mktemp -d "$config_dir/.refresh.XXXXXX")"
+    echo "claude-refresh: refreshing Claude OAuth credential"
+
+    if timeout 120 env \
+      -u CLAUDE_CODE_OAUTH_TOKEN \
+      -u ANTHROPIC_API_KEY \
+      -u ANTHROPIC_AUTH_TOKEN \
+      -u ANTHROPIC_BASE_URL \
+      -u CLAUDE_CODE_USE_BEDROCK \
+      -u CLAUDE_CODE_USE_VERTEX \
+      -u CLAUDE_CODE_USE_FOUNDRY \
+      CLAUDE_CONFIG_DIR="$refresh_dir" \
+      CLAUDE_CODE_OAUTH_REFRESH_TOKEN="$refresh_token" \
+      CLAUDE_CODE_OAUTH_SCOPES="$scopes" \
+      claude auth login >/dev/null \
+      && jq -e '
+        (.claudeAiOauth.accessToken | type == "string" and length > 0)
+        and (.claudeAiOauth.refreshToken | type == "string" and length > 0)
+        and (.claudeAiOauth.scopes | index("user:profile") != null)
+      ' "$refresh_dir/.credentials.json" >/dev/null
+    then
+      chmod 600 "$refresh_dir/.credentials.json"
+      mv -f "$refresh_dir/.credentials.json" "$credentials"
+      rm -rf "$refresh_dir"
+      echo "claude-refresh: credential refreshed"
+    else
+      rm -rf "$refresh_dir"
+      echo >&2 "claude-refresh: refresh failed; will retry"
+    fi
+
+    unset refresh_token scopes refresh_dir
+  fi
+
+  sleep "$poll_seconds"
+done
