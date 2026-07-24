@@ -32,3 +32,10 @@ RUN git clone https://github.com/kim-em/TauCetiWorker.git /opt/tauceti
 COPY claude-refresh-loop /usr/local/bin/claude-refresh-loop
 RUN chmod 0755 /usr/local/bin/claude-refresh-loop
 WORKDIR /opt/tauceti
+
+# Make HTTPS git operations use the token stored by GitHub CLI.
+# System-level configuration remains visible after TauCeti isolates $HOME.
+RUN git config --system credential.https://github.com.helper "" \
+       && git config --system --add \
+       credential.https://github.com.helper \
+       "!gh auth git-credential"
