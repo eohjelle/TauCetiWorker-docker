@@ -2,7 +2,7 @@
 # using both Codex and Claude via `--agent auto`. Builds for the host arch (arm64 or amd64).
 # Subscription credentials are file-based on Linux and persist in named volumes.
 # A dedicated Claude refresher owns refresh-token rotation (see docker-compose.yml).
-FROM node:22-bookworm
+FROM node:22-trixie
 
 # System deps: git, jq (tauceti), a C toolchain (Lean), ripgrep (Claude Code), and the gh CLI.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -44,6 +44,17 @@ RUN set -eux; \
 # this layer's cache busts and the clone re-runs — plain `docker compose build` always gets the latest.
 ADD https://api.github.com/repos/kim-em/TauCetiWorker/commits/main /tmp/worker-head.json
 RUN git clone https://github.com/kim-em/TauCetiWorker.git /opt/tauceti
+
+# Agent commands run through login shells. Debian's /etc/profile replaces the inherited PATH, so
+# restore the worker's transparent Lake/safe-Git shim directory after that system default is applied.
+COPY tauceti-path.sh /etc/profile.d/tauceti-path.sh
+RUN set -eux; \
+  chmod 0644 /etc/profile.d/tauceti-path.sh; \
+  mkdir -p /tmp/tauceti-worker-home; \
+  env HOME=/tmp/tauceti-worker-home bash -lc \
+  'test "$(command -v lake)" = /opt/tauceti/scripts/lake; \
+  test "$(TAUCETI_LAKE_RESOLVE_ONLY=1 lake)" = /usr/local/bin/lake'; \
+  rm -rf /tmp/tauceti-worker-home
 
 # Refresh the full Claude OAuth login before its access token expires.
 COPY claude-refresh-loop /usr/local/bin/claude-refresh-loop
