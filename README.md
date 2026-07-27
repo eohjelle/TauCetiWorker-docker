@@ -5,8 +5,8 @@ own subscriptions — no API keys. The container _is_ the sandbox, so it runs in
 bubble). Agent creds are stored in **files** on Linux, so the loop refreshes its tokens in place
 and keeps running unattended; the creds persist across restarts via named volumes.
 
-Runs on any Docker host. It needs disk (image ~2–3 G + Mathlib cache ~8 G in the `checkouts`
-volume) and RAM (Lean builds want ≥8 G).
+Runs on any Docker host. It needs disk (image ~2–3 G, a Lean toolchain in the `elan` volume,
+and Mathlib/TauCeti build state in the `checkouts` volume) and RAM (Lean builds want ≥8 G).
 
 ## 1. Build
 
@@ -37,6 +37,30 @@ To verify:
 docker compose run --rm tauceti ./tauceti doctor   # gh / git / uv / jq / lake / claude+codex creds all OK
 ```
 
+## Lean toolchain layout
+
+TauCetiWorker gives each worker an isolated `HOME` for agent credentials and mutable agent state.
+Lean is deliberately shared instead: Elan stores its settings and downloaded toolchains in the
+persistent `elan` volume at `/opt/elan`, while its `elan`, `lake`, and `lean` proxy executables live
+in `/usr/local/bin`. The proxies therefore remain visible even after `HOME` changes or an agent
+starts a login shell.
+
+To verify the tools are independent of `HOME`:
+
+```bash
+docker compose run --rm tauceti \
+  env HOME=/tmp/isolated-home bash -lc '
+    echo "ELAN_HOME=$ELAN_HOME"
+    command -v elan
+    command -v lake
+    command -v lean
+    command -v uv
+    command -v uvx
+  '
+```
+
+The expected executable paths are under `/usr/local/bin`, and `ELAN_HOME` should be `/opt/elan`.
+
 ## 3. Run
 
 ```bash
@@ -50,6 +74,6 @@ Durable per-round logs are in the `logs` volume; full Claude transcripts in the 
 ## Stop / reset
 
 ```bash
-docker compose down                 # stop (keeps volumes = creds + build cache)
-docker compose down -v              # stop AND delete volumes (re-auth + cold rebuild next time)
+docker compose down                 # stop (keeps credentials, toolchains, and build state)
+docker compose down -v              # stop AND delete volumes (re-auth + toolchain/cache downloads next time)
 ```
