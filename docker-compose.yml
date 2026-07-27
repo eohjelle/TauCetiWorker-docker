@@ -7,7 +7,12 @@ services:
     restart: unless-stopped
     command: ["./tauceti", "work", "--loop", "--pace", "0:10,100:90"]
     environment:
-      - IS_SANDBOX=1
+      IS_SANDBOX: "1"
+      TAUCETI_AGENT: "auto"
+      TAUCETI_AUTHORING_CODEX_MODEL: "gpt-5.6-sol"
+      TAUCETI_AUTHORING_CODEX_EFFORT: "xhigh"
+      TAUCETI_AUTHORING_CLAUDE_MODEL: "claude-opus-5"
+      TAUCETI_AUTHORING_CLAUDE_EFFORT: "xhigh"
     volumes:
       # Subscription creds persist in named volumes. Claude refresh is owned by the service below.
       - claude:/root/.claude          # Claude: .credentials.json + full session transcripts (projects/)
