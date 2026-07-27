@@ -5,8 +5,7 @@ own subscriptions — no API keys. The container _is_ the sandbox, so it runs in
 bubble). Agent creds are stored in **files** on Linux, so the loop refreshes its tokens in place
 and keeps running unattended; the creds persist across restarts via named volumes.
 
-Runs on any Docker host. It needs disk (image ~2–3 G + Mathlib cache ~8 G in the `checkouts`
-volume) and RAM (Lean builds want ≥8 G).
+Runs on any Docker host. It needs disk (image ~2–3 G + Mathlib cache ~8G in the `checkouts` volume) and RAM (Lean builds want ≥8 G).
 
 ## 1. Build
 
@@ -41,7 +40,7 @@ docker compose run --rm tauceti ./tauceti doctor   # gh / git / uv / jq / lake /
 
 ```bash
 docker compose up -d            # starts the loop, restarts on crash/reboot
-docker compose logs -f          # live: scheduler + agent narration/commands (Claude) + Codex output
+docker compose logs -f          # live: scheduler + agent work if streaming
 ```
 
 Durable per-round logs are in the `logs` volume; full Claude transcripts in the `claude` volume
@@ -50,6 +49,6 @@ Durable per-round logs are in the `logs` volume; full Claude transcripts in the 
 ## Stop / reset
 
 ```bash
-docker compose down                 # stop (keeps volumes = creds + build cache)
-docker compose down -v              # stop AND delete volumes (re-auth + cold rebuild next time)
+docker compose down                 # stop (keeps credentials, toolchains, and build state)
+docker compose down -v              # stop AND delete volumes (re-auth + toolchain/cache downloads next time)
 ```

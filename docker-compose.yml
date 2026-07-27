@@ -13,7 +13,8 @@ services:
       - claude:/root/.claude          # Claude: .credentials.json + full session transcripts (projects/)
       - codex:/root/.codex            # Codex:  auth.json
       - gh:/root/.config/gh           # GitHub auth
-      # Build state + logs — named volumes for fast native-FS builds and durability.
+      # Shared Lean toolchains plus per-worker build state and logs.
+      - elan:/opt/elan                     # Elan settings + downloaded Lean toolchains
       - checkouts:/opt/tauceti/checkouts   # persistent checkout → incremental Lean builds
       - state:/opt/tauceti/state
       - logs:/opt/tauceti/logs
@@ -34,6 +35,7 @@ volumes:
   claude:
   codex:
   gh:
+  elan:
   checkouts:
   state:
   logs:
