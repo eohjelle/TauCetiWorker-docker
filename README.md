@@ -5,8 +5,7 @@ own subscriptions — no API keys. The container _is_ the sandbox, so it runs in
 bubble). Agent creds are stored in **files** on Linux, so the loop refreshes its tokens in place
 and keeps running unattended; the creds persist across restarts via named volumes.
 
-Runs on any Docker host. It needs disk (image ~2–3 G, a Lean toolchain in the `elan` volume,
-and Mathlib/TauCeti build state in the `checkouts` volume) and RAM (Lean builds want ≥8 G).
+Runs on any Docker host. It needs disk (image ~2–3 G + Mathlib cache ~8G in the `checkouts` volume) and RAM (Lean builds want ≥8 G).
 
 ## 1. Build
 
@@ -37,35 +36,11 @@ To verify:
 docker compose run --rm tauceti ./tauceti doctor   # gh / git / uv / jq / lake / claude+codex creds all OK
 ```
 
-## Lean toolchain layout
-
-TauCetiWorker gives each worker an isolated `HOME` for agent credentials and mutable agent state.
-Lean is deliberately shared instead: Elan stores its settings and downloaded toolchains in the
-persistent `elan` volume at `/opt/elan`, while its `elan`, `lake`, and `lean` proxy executables live
-in `/usr/local/bin`. The proxies therefore remain visible even after `HOME` changes or an agent
-starts a login shell.
-
-To verify the tools are independent of `HOME`:
-
-```bash
-docker compose run --rm tauceti \
-  env HOME=/tmp/isolated-home bash -lc '
-    echo "ELAN_HOME=$ELAN_HOME"
-    command -v elan
-    command -v lake
-    command -v lean
-    command -v uv
-    command -v uvx
-  '
-```
-
-The expected executable paths are under `/usr/local/bin`, and `ELAN_HOME` should be `/opt/elan`.
-
 ## 3. Run
 
 ```bash
 docker compose up -d            # starts the loop, restarts on crash/reboot
-docker compose logs -f          # live: scheduler + agent narration/commands (Claude) + Codex output
+docker compose logs -f          # live: scheduler + agent work if streaming
 ```
 
 Durable per-round logs are in the `logs` volume; full Claude transcripts in the `claude` volume
