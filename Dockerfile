@@ -46,14 +46,14 @@ ADD https://api.github.com/repos/eohjelle/TauCetiWorker/commits/main /tmp/worker
 RUN git clone https://github.com/eohjelle/TauCetiWorker.git /opt/tauceti
 
 # Agent commands run through login shells. Debian's /etc/profile replaces the inherited PATH, so
-# restore the worker's transparent Lake/safe-Git shim directory after that system default is applied.
+# restore the worker's agent-helper directory after that system default is applied.
 COPY tauceti-path.sh /etc/profile.d/tauceti-path.sh
 RUN set -eux; \
   chmod 0644 /etc/profile.d/tauceti-path.sh; \
   mkdir -p /tmp/tauceti-worker-home; \
   env HOME=/tmp/tauceti-worker-home bash -lc \
-  'test "$(command -v lake)" = /opt/tauceti/scripts/lake; \
-  test "$(TAUCETI_LAKE_RESOLVE_ONLY=1 lake)" = /usr/local/bin/lake'; \
+  'test "$(command -v lake)" = /usr/local/bin/lake; \
+  test "$(command -v git-safe-push)" = /opt/tauceti/scripts/git-safe-push'; \
   rm -rf /tmp/tauceti-worker-home
 
 # Refresh the full Claude OAuth login before its access token expires.
