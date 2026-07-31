@@ -1,5 +1,11 @@
 # Run: docker compose up -d --build   |   watch: docker compose logs -f
 # See README.md for one-time authentication (Claude + Codex + gh) before the first run.
+x-logging: &bounded-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   tauceti:
     build: .
@@ -13,6 +19,9 @@ services:
       TAUCETI_AUTHORING_CODEX_EFFORT: "xhigh"
       TAUCETI_AUTHORING_CLAUDE_MODEL: "claude-opus-5"
       TAUCETI_AUTHORING_CLAUDE_EFFORT: "xhigh"
+      # This host's Elan volume is dedicated to TauCeti worker checkouts.
+      TAUCETI_PRUNE_OBSOLETE_LEAN_TOOLCHAINS: "true"
+    logging: *bounded-logging
     volumes:
       # Subscription creds persist in named volumes. Claude refresh is owned by the service below.
       - claude:/root/.claude          # Claude: .credentials.json + full session transcripts (projects/)
@@ -33,6 +42,7 @@ services:
     image: tauceti-worker
     restart: unless-stopped
     command: ["/usr/local/bin/claude-refresh-loop"]
+    logging: *bounded-logging
     volumes:
       - claude:/root/.claude
 
